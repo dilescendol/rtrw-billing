@@ -40,7 +40,7 @@ class InvoiceController extends Controller
     public function store(Request $request, InvoiceGenerator $generator)
     {
         $data = $request->validate([
-            'customer_id' => ['required', 'exists:customers,id'],
+            'customer_id' => ['required', 'exists:customers,id,tenant_id,'.app('current_tenant_id')],
             'period' => ['required', 'date_format:Y-m'],
         ]);
 

@@ -104,7 +104,7 @@ class CustomerController extends Controller
         $tenantId = app('current_tenant_id');
 
         return $request->validate([
-            'package_id' => ['nullable', 'exists:packages,id'],
+            'package_id' => ['nullable', "exists:packages,id,tenant_id,{$tenantId}"],
             'code' => ['nullable', 'string', 'max:32'],
             'name' => ['required', 'string', 'max:255'],
             'phone' => ['nullable', 'string', 'max:32'],
@@ -121,8 +121,13 @@ class CustomerController extends Controller
 
     protected function nextCode(int $tenantId): string
     {
-        $count = Customer::withoutGlobalScopes()->where('tenant_id', $tenantId)->count() + 1;
+        $latest = Customer::withoutGlobalScopes()
+            ->where('tenant_id', $tenantId)
+            ->where('code', 'like', 'C%')
+            ->orderByDesc('code')
+            ->value('code');
+        $next = $latest ? ((int) substr($latest, 1)) + 1 : 1;
 
-        return 'C'.str_pad((string) $count, 4, '0', STR_PAD_LEFT);
+        return 'C'.str_pad((string) $next, 4, '0', STR_PAD_LEFT);
     }
 }

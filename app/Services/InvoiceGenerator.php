@@ -33,38 +33,57 @@ class InvoiceGenerator
         // Wrap the duplicate check + insert inside one transaction so concurrent
         // calls cannot both pass the check. The unique index on
         // (tenant_id, customer_id, period_start) is the final guard.
-        try {
-            return DB::transaction(function () use ($tenant, $customer, $periodStart, $periodEnd, $dueDate) {
-                $exists = Invoice::withoutGlobalScopes()
+        // Retry briefly if invoice_no collides with a parallel insert for a
+        // different customer; the (customer, period) check still protects us.
+        $attempts = 0;
+        while (true) {
+            $attempts++;
+            try {
+                return DB::transaction(function () use ($tenant, $customer, $periodStart, $periodEnd, $dueDate) {
+                    $exists = Invoice::withoutGlobalScopes()
+                        ->where('tenant_id', $tenant->id)
+                        ->where('customer_id', $customer->id)
+                        ->where('period_start', $periodStart->toDateString())
+                        ->lockForUpdate()
+                        ->exists();
+                    if ($exists) {
+                        return null;
+                    }
+
+                    $invoice = new Invoice;
+                    $invoice->tenant_id = $tenant->id;
+                    $invoice->customer_id = $customer->id;
+                    $invoice->package_id = $customer->package_id;
+                    $invoice->invoice_no = $this->nextInvoiceNumber($tenant, $periodStart);
+                    $invoice->period_start = $periodStart->toDateString();
+                    $invoice->period_end = $periodEnd->toDateString();
+                    $invoice->due_date = $dueDate->toDateString();
+                    $invoice->amount_idr = $customer->package->price_idr;
+                    $invoice->status = Invoice::STATUS_UNPAID;
+                    $invoice->save();
+
+                    return $invoice;
+                });
+            } catch (QueryException $e) {
+                if (! $this->isUniqueViolation($e)) {
+                    throw $e;
+                }
+                // Was it the period-uniqueness that fired? Then a concurrent
+                // call already created this customer+period invoice.
+                $duplicatePeriod = Invoice::withoutGlobalScopes()
                     ->where('tenant_id', $tenant->id)
                     ->where('customer_id', $customer->id)
                     ->where('period_start', $periodStart->toDateString())
-                    ->lockForUpdate()
                     ->exists();
-                if ($exists) {
+                if ($duplicatePeriod) {
                     return null;
                 }
-
-                $invoice = new Invoice;
-                $invoice->tenant_id = $tenant->id;
-                $invoice->customer_id = $customer->id;
-                $invoice->package_id = $customer->package_id;
-                $invoice->invoice_no = $this->nextInvoiceNumber($tenant);
-                $invoice->period_start = $periodStart->toDateString();
-                $invoice->period_end = $periodEnd->toDateString();
-                $invoice->due_date = $dueDate->toDateString();
-                $invoice->amount_idr = $customer->package->price_idr;
-                $invoice->status = Invoice::STATUS_UNPAID;
-                $invoice->save();
-
-                return $invoice;
-            });
-        } catch (QueryException $e) {
-            // Race lost: unique index caught a concurrent insert, treat as already exists.
-            if ($this->isUniqueViolation($e)) {
-                return null;
+                // Otherwise it must be an invoice_no collision with a parallel
+                // insert for a different customer — retry up to a few times.
+                if ($attempts >= 5) {
+                    throw $e;
+                }
             }
-            throw $e;
         }
     }
 
@@ -87,16 +106,17 @@ class InvoiceGenerator
     }
 
     /**
-     * Allocate a unique invoice number for a tenant for the current month.
+     * Allocate the next invoice number for a tenant for the given billing period.
      *
-     * Retries on rare unique-constraint races since invoice_no is globally unique.
+     * Caller is expected to be inside a DB transaction so concurrent inserts
+     * are serialized via the unique index on invoice_no.
      */
-    protected function nextInvoiceNumber(Tenant $tenant): string
+    protected function nextInvoiceNumber(Tenant $tenant, CarbonImmutable $period): string
     {
         $prefix = $tenant->invoice_prefix ?: 'INV';
-        $ym = now()->format('Ym');
+        $ym = $period->format('Ym');
 
-        // Use the highest existing sequence for this tenant+month and increment.
+        // Use the highest existing sequence for this tenant+period and increment.
         $likePrefix = $prefix.'/'.$ym.'/';
         $latest = Invoice::withoutGlobalScopes()
             ->where('tenant_id', $tenant->id)
