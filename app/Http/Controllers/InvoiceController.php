@@ -19,8 +19,10 @@ class InvoiceController extends Controller
 
         $invoices = Invoice::with('customer', 'package')
             ->when($status, fn ($qb) => $qb->where('status', $status))
-            ->when($q, fn ($qb) => $qb->where('invoice_no', 'like', "%{$q}%")
-                ->orWhereHas('customer', fn ($c) => $c->where('name', 'like', "%{$q}%")))
+            ->when($q, fn ($qb) => $qb->where(function ($x) use ($q) {
+                $x->where('invoice_no', 'like', "%{$q}%")
+                    ->orWhereHas('customer', fn ($c) => $c->where('name', 'like', "%{$q}%"));
+            }))
             ->latest('due_date')
             ->paginate(20)
             ->withQueryString();

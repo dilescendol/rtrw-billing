@@ -18,10 +18,12 @@ class DashboardController extends Controller
         $isolatedCustomers = Customer::where('status', Customer::STATUS_ISOLATED)->count();
 
         $unpaidThisMonth = Invoice::where('status', Invoice::STATUS_UNPAID)->sum('amount_idr');
-        $overdue = Invoice::where('status', Invoice::STATUS_OVERDUE)
-            ->orWhere(function ($q) {
-                $q->where('status', Invoice::STATUS_UNPAID)->where('due_date', '<', now());
-            })->count();
+        $overdue = Invoice::where(function ($q) {
+            $q->where('status', Invoice::STATUS_OVERDUE)
+                ->orWhere(function ($inner) {
+                    $inner->where('status', Invoice::STATUS_UNPAID)->where('due_date', '<', now());
+                });
+        })->count();
 
         $thisMonthRevenue = Invoice::where('status', Invoice::STATUS_PAID)
             ->whereBetween('paid_at', [

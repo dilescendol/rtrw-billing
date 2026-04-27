@@ -28,6 +28,7 @@ return new class extends Migration
             $table->timestamps();
             $table->index(['tenant_id', 'status']);
             $table->index(['tenant_id', 'due_date']);
+            $table->unique(['tenant_id', 'customer_id', 'period_start'], 'invoices_tenant_customer_period_unique');
         });
     }
 

@@ -28,6 +28,10 @@ class PaymentController extends Controller
 
     public function store(Request $request, Invoice $invoice)
     {
+        if ($invoice->isPaid()) {
+            return back()->withErrors(['invoice' => 'Invoice sudah lunas, tidak bisa mencatat pembayaran lagi.']);
+        }
+
         $data = $request->validate([
             'amount_idr' => ['required', 'integer', 'min:1'],
             'method' => ['required', 'in:transfer,cash,other'],

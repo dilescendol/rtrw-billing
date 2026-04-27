@@ -50,13 +50,16 @@ class PackageController extends Controller
 
     protected function rules(Request $request): array
     {
-        return $request->validate([
+        $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'price_idr' => ['required', 'integer', 'min:0'],
             'speed_mbps' => ['nullable', 'integer', 'min:0'],
             'mikrotik_profile' => ['nullable', 'string', 'max:64'],
             'description' => ['nullable', 'string'],
             'is_active' => ['nullable', 'boolean'],
-        ]) + ['is_active' => $request->boolean('is_active', true)];
+        ]);
+        $data['is_active'] = $request->boolean('is_active', true);
+
+        return $data;
     }
 }

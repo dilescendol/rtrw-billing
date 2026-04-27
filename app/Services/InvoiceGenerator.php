@@ -6,6 +6,7 @@ use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Tenant;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 
 class InvoiceGenerator
@@ -25,35 +26,46 @@ class InvoiceGenerator
         $periodStart = $for->startOfMonth();
         $periodEnd = $for->endOfMonth();
 
-        // Skip if invoice already exists for this period
-        $exists = Invoice::withoutGlobalScopes()
-            ->where('tenant_id', $tenant->id)
-            ->where('customer_id', $customer->id)
-            ->where('period_start', $periodStart->toDateString())
-            ->exists();
-        if ($exists) {
-            return null;
-        }
-
         $dueDay = (int) ($customer->due_day ?: $tenant->default_due_day ?: 5);
         $dueDay = max(1, min(28, $dueDay));
         $dueDate = $periodStart->day($dueDay);
 
-        return DB::transaction(function () use ($tenant, $customer, $periodStart, $periodEnd, $dueDate) {
-            $invoice = new Invoice;
-            $invoice->tenant_id = $tenant->id;
-            $invoice->customer_id = $customer->id;
-            $invoice->package_id = $customer->package_id;
-            $invoice->invoice_no = $this->nextInvoiceNumber($tenant);
-            $invoice->period_start = $periodStart->toDateString();
-            $invoice->period_end = $periodEnd->toDateString();
-            $invoice->due_date = $dueDate->toDateString();
-            $invoice->amount_idr = $customer->package->price_idr;
-            $invoice->status = Invoice::STATUS_UNPAID;
-            $invoice->save();
+        // Wrap the duplicate check + insert inside one transaction so concurrent
+        // calls cannot both pass the check. The unique index on
+        // (tenant_id, customer_id, period_start) is the final guard.
+        try {
+            return DB::transaction(function () use ($tenant, $customer, $periodStart, $periodEnd, $dueDate) {
+                $exists = Invoice::withoutGlobalScopes()
+                    ->where('tenant_id', $tenant->id)
+                    ->where('customer_id', $customer->id)
+                    ->where('period_start', $periodStart->toDateString())
+                    ->lockForUpdate()
+                    ->exists();
+                if ($exists) {
+                    return null;
+                }
 
-            return $invoice;
-        });
+                $invoice = new Invoice;
+                $invoice->tenant_id = $tenant->id;
+                $invoice->customer_id = $customer->id;
+                $invoice->package_id = $customer->package_id;
+                $invoice->invoice_no = $this->nextInvoiceNumber($tenant);
+                $invoice->period_start = $periodStart->toDateString();
+                $invoice->period_end = $periodEnd->toDateString();
+                $invoice->due_date = $dueDate->toDateString();
+                $invoice->amount_idr = $customer->package->price_idr;
+                $invoice->status = Invoice::STATUS_UNPAID;
+                $invoice->save();
+
+                return $invoice;
+            });
+        } catch (QueryException $e) {
+            // Race lost: unique index caught a concurrent insert, treat as already exists.
+            if ($this->isUniqueViolation($e)) {
+                return null;
+            }
+            throw $e;
+        }
     }
 
     public function generateForTenant(Tenant $tenant, ?CarbonImmutable $for = null): int
@@ -74,16 +86,40 @@ class InvoiceGenerator
         return $count;
     }
 
+    /**
+     * Allocate a unique invoice number for a tenant for the current month.
+     *
+     * Retries on rare unique-constraint races since invoice_no is globally unique.
+     */
     protected function nextInvoiceNumber(Tenant $tenant): string
     {
         $prefix = $tenant->invoice_prefix ?: 'INV';
         $ym = now()->format('Ym');
-        $count = Invoice::withoutGlobalScopes()
-            ->where('tenant_id', $tenant->id)
-            ->whereYear('created_at', now()->year)
-            ->whereMonth('created_at', now()->month)
-            ->count() + 1;
 
-        return sprintf('%s/%s/%05d', $prefix, $ym, $count);
+        // Use the highest existing sequence for this tenant+month and increment.
+        $likePrefix = $prefix.'/'.$ym.'/';
+        $latest = Invoice::withoutGlobalScopes()
+            ->where('tenant_id', $tenant->id)
+            ->where('invoice_no', 'like', $likePrefix.'%')
+            ->orderByDesc('invoice_no')
+            ->value('invoice_no');
+
+        $next = 1;
+        if ($latest) {
+            $tail = substr($latest, strlen($likePrefix));
+            $tailInt = (int) $tail;
+            if ($tailInt > 0) {
+                $next = $tailInt + 1;
+            }
+        }
+
+        return sprintf('%s%05d', $likePrefix, $next);
+    }
+
+    protected function isUniqueViolation(QueryException $e): bool
+    {
+        // SQLSTATE 23000 (MySQL/SQLite) covers integrity constraint violations
+        // including unique index violations.
+        return in_array($e->getCode(), ['23000', '23505'], true);
     }
 }

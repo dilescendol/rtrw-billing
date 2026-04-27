@@ -40,10 +40,11 @@ class CustomerController extends Controller
         $data = $this->validateData($request);
         $tenant = app('current_tenant');
 
-        // Plan limit enforcement
+        // Plan limit enforcement — count only non-terminated customers.
         $plan = $tenant->plan;
         if ($plan && $plan->max_customers > 0) {
-            if (Customer::count() >= $plan->max_customers) {
+            $active = Customer::where('status', '!=', Customer::STATUS_TERMINATED)->count();
+            if ($active >= $plan->max_customers) {
                 return back()->withErrors(['package_id' => 'Batas pelanggan paket Anda tercapai. Silakan upgrade.'])->withInput();
             }
         }

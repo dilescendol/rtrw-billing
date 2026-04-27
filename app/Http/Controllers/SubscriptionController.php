@@ -43,8 +43,19 @@ class SubscriptionController extends Controller
         $user = auth()->user();
         $tenant = $user->tenant;
 
-        if ($plan->price_idr <= 0) {
+        if (! $plan->is_active || $plan->code === Plan::CODE_TRIAL || $plan->price_idr <= 0) {
             return back()->withErrors(['plan' => 'Plan tidak valid.']);
+        }
+
+        // Reuse a recent pending checkout for this plan instead of spawning a new one.
+        $existing = TenantSubscription::where('tenant_id', $tenant->id)
+            ->where('plan_id', $plan->id)
+            ->where('status', TenantSubscription::STATUS_PENDING)
+            ->where('created_at', '>', now()->subHour())
+            ->latest()
+            ->first();
+        if ($existing && $existing->pakasir_payment_url) {
+            return redirect($existing->pakasir_payment_url);
         }
 
         $service = PakasirService::forPlatform();
