@@ -8,6 +8,7 @@ use App\Models\Tenant;
 use App\Models\TenantSubscription;
 use App\Services\PakasirService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class PakasirWebhookController extends Controller
@@ -55,19 +56,26 @@ class PakasirWebhookController extends Controller
         }
 
         if (! $invoice->isPaid()) {
-            $invoice->update([
-                'status' => Invoice::STATUS_PAID,
-                'paid_at' => now(),
-                'payment_method' => 'pakasir',
-            ]);
-            $invoice->payments()->create([
-                'tenant_id' => $tenant->id,
-                'amount_idr' => $invoice->amount_idr,
-                'method' => 'pakasir',
-                'paid_at' => now(),
-                'reference' => $orderId,
-                'status' => 'verified',
-            ]);
+            DB::transaction(function () use ($invoice, $tenant, $orderId) {
+                // Re-check inside transaction with row lock to drop duplicate webhooks.
+                $fresh = Invoice::withoutGlobalScopes()->lockForUpdate()->find($invoice->id);
+                if (! $fresh || $fresh->isPaid()) {
+                    return;
+                }
+                $fresh->update([
+                    'status' => Invoice::STATUS_PAID,
+                    'paid_at' => now(),
+                    'payment_method' => 'pakasir',
+                ]);
+                $fresh->payments()->create([
+                    'tenant_id' => $tenant->id,
+                    'amount_idr' => $fresh->amount_idr,
+                    'method' => 'pakasir',
+                    'paid_at' => now(),
+                    'reference' => $orderId,
+                    'status' => 'verified',
+                ]);
+            });
         }
 
         return response()->json(['ok' => true]);
@@ -107,18 +115,24 @@ class PakasirWebhookController extends Controller
             return response()->json(['ok' => false], 404);
         }
         if ($sub->status !== TenantSubscription::STATUS_PAID) {
-            $sub->update([
-                'status' => TenantSubscription::STATUS_PAID,
-                'started_at' => now(),
-                'ends_at' => now()->addMonth(),
-                'paid_at' => now(),
-            ]);
-            $sub->tenant->update([
-                'plan_id' => $sub->plan_id,
-                'status' => Tenant::STATUS_ACTIVE,
-                'plan_ends_at' => $sub->ends_at,
-                'suspended_reason' => null,
-            ]);
+            DB::transaction(function () use ($sub) {
+                $fresh = TenantSubscription::lockForUpdate()->find($sub->id);
+                if (! $fresh || $fresh->status === TenantSubscription::STATUS_PAID) {
+                    return;
+                }
+                $fresh->update([
+                    'status' => TenantSubscription::STATUS_PAID,
+                    'started_at' => now(),
+                    'ends_at' => now()->addMonth(),
+                    'paid_at' => now(),
+                ]);
+                $fresh->tenant->update([
+                    'plan_id' => $fresh->plan_id,
+                    'status' => Tenant::STATUS_ACTIVE,
+                    'plan_ends_at' => $fresh->ends_at,
+                    'suspended_reason' => null,
+                ]);
+            });
         }
 
         return response()->json(['ok' => true]);

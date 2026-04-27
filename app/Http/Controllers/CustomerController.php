@@ -121,13 +121,22 @@ class CustomerController extends Controller
 
     protected function nextCode(int $tenantId): string
     {
-        $latest = Customer::withoutGlobalScopes()
+        // Only consider auto-formatted codes (C followed by digits) so a manually
+        // set code like "CUST01" doesn't poison the sequence.
+        $rows = Customer::withoutGlobalScopes()
             ->where('tenant_id', $tenantId)
             ->where('code', 'like', 'C%')
-            ->orderByDesc('code')
-            ->value('code');
-        $next = $latest ? ((int) substr($latest, 1)) + 1 : 1;
+            ->pluck('code');
+        $maxN = 0;
+        foreach ($rows as $code) {
+            if (preg_match('/^C(\d+)$/', $code, $m)) {
+                $n = (int) $m[1];
+                if ($n > $maxN) {
+                    $maxN = $n;
+                }
+            }
+        }
 
-        return 'C'.str_pad((string) $next, 4, '0', STR_PAD_LEFT);
+        return 'C'.str_pad((string) ($maxN + 1), 4, '0', STR_PAD_LEFT);
     }
 }
