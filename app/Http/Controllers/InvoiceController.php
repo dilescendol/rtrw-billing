@@ -45,7 +45,7 @@ class InvoiceController extends Controller
         ]);
 
         $customer = Customer::findOrFail($data['customer_id']);
-        $for = CarbonImmutable::createFromFormat('Y-m', $data['period'])->startOfMonth();
+        $for = CarbonImmutable::createFromFormat('!Y-m', $data['period'])->startOfMonth();
         $invoice = $generator->generateForCustomer($customer, $for);
 
         if (! $invoice) {
@@ -59,7 +59,7 @@ class InvoiceController extends Controller
     {
         $tenant = app('current_tenant');
         $request->validate(['period' => ['required', 'date_format:Y-m']]);
-        $for = CarbonImmutable::createFromFormat('Y-m', $request->input('period'))->startOfMonth();
+        $for = CarbonImmutable::createFromFormat('!Y-m', $request->input('period'))->startOfMonth();
         $count = $generator->generateForTenant($tenant, $for);
 
         return back()->with('success', "Berhasil generate {$count} invoice baru.");

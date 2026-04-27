@@ -13,7 +13,7 @@ return new class extends Migration
             $table->foreignId('tenant_id')->constrained()->cascadeOnDelete();
             $table->foreignId('customer_id')->constrained('customers')->cascadeOnDelete();
             $table->foreignId('package_id')->nullable()->constrained('packages')->nullOnDelete();
-            $table->string('invoice_no')->unique();
+            $table->string('invoice_no');
             $table->date('period_start');
             $table->date('period_end');
             $table->date('due_date');
@@ -28,6 +28,7 @@ return new class extends Migration
             $table->timestamps();
             $table->index(['tenant_id', 'status']);
             $table->index(['tenant_id', 'due_date']);
+            $table->unique(['tenant_id', 'invoice_no'], 'invoices_tenant_invoice_no_unique');
             $table->unique(['tenant_id', 'customer_id', 'period_start'], 'invoices_tenant_customer_period_unique');
         });
     }

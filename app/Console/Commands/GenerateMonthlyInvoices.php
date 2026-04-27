@@ -17,7 +17,7 @@ class GenerateMonthlyInvoices extends Command
     {
         $period = $this->option('period');
         $for = $period
-            ? CarbonImmutable::createFromFormat('Y-m', $period)->startOfMonth()
+            ? CarbonImmutable::createFromFormat('!Y-m', $period)->startOfMonth()
             : CarbonImmutable::now()->startOfMonth();
 
         $query = Tenant::query()->where('status', '!=', Tenant::STATUS_SUSPENDED);

@@ -65,18 +65,31 @@ class PaymentController extends Controller
 
     public function verify(Payment $payment)
     {
-        $payment->update([
-            'status' => Payment::STATUS_VERIFIED,
-            'verified_by' => auth()->id(),
-        ]);
-        $invoice = $payment->invoice;
-        if ($invoice && ! $invoice->isPaid()) {
-            $invoice->update([
-                'status' => Invoice::STATUS_PAID,
-                'paid_at' => $payment->paid_at,
-                'payment_method' => $payment->method,
-            ]);
+        if ($payment->status === Payment::STATUS_VERIFIED) {
+            return back()->with('info', 'Pembayaran sudah diverifikasi sebelumnya.');
         }
+
+        DB::transaction(function () use ($payment) {
+            $payment->update([
+                'status' => Payment::STATUS_VERIFIED,
+                'verified_by' => auth()->id(),
+            ]);
+            $invoice = $payment->invoice;
+            if (! $invoice || $invoice->isPaid()) {
+                return;
+            }
+            // Only mark the invoice paid once total verified payments cover it.
+            $verifiedTotal = (int) Payment::where('invoice_id', $invoice->id)
+                ->where('status', Payment::STATUS_VERIFIED)
+                ->sum('amount_idr');
+            if ($verifiedTotal >= (int) $invoice->amount_idr) {
+                $invoice->update([
+                    'status' => Invoice::STATUS_PAID,
+                    'paid_at' => $payment->paid_at,
+                    'payment_method' => $payment->method,
+                ]);
+            }
+        });
 
         return back()->with('success', 'Pembayaran diverifikasi.');
     }
