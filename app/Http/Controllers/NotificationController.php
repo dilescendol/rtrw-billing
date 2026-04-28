@@ -22,7 +22,7 @@ class NotificationController extends Controller
         }
 
         $url = $notification?->data['url'] ?? null;
-        if ($url) {
+        if (is_string($url) && str_starts_with($url, '/') && ! str_starts_with($url, '//')) {
             return redirect($url);
         }
 

@@ -31,19 +31,35 @@ class RadiusManager
     protected function connection(): ConnectionInterface
     {
         $name = 'radius_'.$this->server->id;
+        $driver = $this->server->sql_driver ?: 'mysql';
 
-        config()->set("database.connections.{$name}", [
-            'driver' => $this->server->sql_driver ?: 'mysql',
+        $defaultPort = match ($driver) {
+            'pgsql' => 5432,
+            'sqlsrv' => 1433,
+            default => 3306,
+        };
+        $charset = match ($driver) {
+            'pgsql', 'sqlsrv' => 'utf8',
+            default => 'utf8mb4',
+        };
+
+        $config = array_filter([
+            'driver' => $driver,
             'host' => $this->server->sql_host ?: $this->server->host,
-            'port' => $this->server->sql_port ?: 3306,
+            'port' => $this->server->sql_port ?: $defaultPort,
             'database' => $this->server->sql_database,
             'username' => $this->server->sql_username,
             'password' => (string) $this->server->sql_password,
-            'charset' => 'utf8mb4',
-            'collation' => 'utf8mb4_unicode_ci',
+            'charset' => $charset,
+            'collation' => $driver === 'mysql' ? 'utf8mb4_unicode_ci' : null,
             'prefix' => '',
             'strict' => false,
-        ]);
+        ], fn ($v) => $v !== null);
+
+        config()->set("database.connections.{$name}", $config);
+
+        // Force a fresh resolve in case config changed since previous call.
+        DB::purge($name);
 
         return DB::connection($name);
     }
