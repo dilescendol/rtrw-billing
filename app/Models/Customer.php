@@ -31,6 +31,8 @@ class Customer extends Model
         'pppoe_username',
         'pppoe_password',
         'ip_address',
+        'radius_group',
+        'last_seen_mac',
         'due_day',
         'installed_at',
         'notes',

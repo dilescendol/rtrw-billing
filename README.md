@@ -81,10 +81,12 @@ CI workflow yang harus dilewati: `.github/workflows/ci.yml` (Pint test + `php ar
   - **Platform-level** (`PAKASIR_PLATFORM_*` di `.env`) — untuk subscription owner ke platform kami.
   - **Per-tenant** (di Settings, dienkripsi di DB pakai cast `encrypted`) — untuk billing pelanggan langsung ke rekening Pakasir owner. **Tidak** masuk laporan keuangan platform.
 - **MikroTik PPPoE**: auto-create PPP secret saat customer dibuat, auto-isolir saat status diubah ke `diisolir`/`berhenti`.
+- **RADIUS / FreeRADIUS (`/radius`)**: 1 tenant bisa punya banyak server. Konfigur host + secret + SQL backend (rlm_sql); customer otomatis di-push ke `radcheck`/`radreply`/`radusergroup`/`radgroupreply` saat create/update; dihapus saat customer dihapus. Dibatasi `Plan.allow_radius`.
+- **GenieACS / TR-069 (`/genieacs`)**: konfigur NBI URL + Basic Auth, list devices, halaman detail, tombol refresh & reboot. Dibatasi `Plan.allow_genieacs`.
 - **Notifikasi WhatsApp** via Fonnte (per-tenant token).
 - **Anti-abuse register**: cooldown email 30 hari + rate-limit IP (3/hari) + device fingerprint (2/hari) — lihat `App\Services\AntiAbuse`.
 
-> Roadmap (akan menyusul di PR berikutnya): RADIUS + GenieACS, monitoring on/off perangkat,
+> Roadmap (akan menyusul di PR berikutnya): monitoring on/off perangkat realtime,
 > remote IP customer, WhatsApp auto-billing reminder, dan chat realtime.
 
 ---

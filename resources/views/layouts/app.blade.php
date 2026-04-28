@@ -63,6 +63,20 @@
                         </a>
                     </li>
                     @endif
+                    @if($plan && $plan->allows('radius') && auth()->user()->isAdmin())
+                    <li class="sidebar-item">
+                        <a href="{{ route('radius.index') }}" class="sidebar-link {{ request()->routeIs('radius.*') ? 'active' : '' }}">
+                            <i class="bi bi-shield-lock"></i><span>RADIUS</span>
+                        </a>
+                    </li>
+                    @endif
+                    @if($plan && $plan->allows('genieacs') && auth()->user()->isAdmin())
+                    <li class="sidebar-item">
+                        <a href="{{ route('genieacs.index') }}" class="sidebar-link {{ request()->routeIs('genieacs.*') ? 'active' : '' }}">
+                            <i class="bi bi-broadcast"></i><span>GenieACS / TR-069</span>
+                        </a>
+                    </li>
+                    @endif
 
                     <li class="sidebar-header">Tagihan</li>
                     <li class="sidebar-item">

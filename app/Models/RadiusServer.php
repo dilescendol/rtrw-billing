@@ -5,15 +5,10 @@ namespace App\Models;
 use App\Models\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class NasDevice extends Model
+class RadiusServer extends Model
 {
     use BelongsToTenant, HasFactory;
-
-    public const TYPE_MIKROTIK = 'mikrotik';
-
-    public const TYPE_OTHER = 'other';
 
     public const STATUS_OK = 'ok';
 
@@ -25,12 +20,15 @@ class NasDevice extends Model
         'tenant_id',
         'name',
         'host',
-        'api_port',
-        'api_user',
-        'api_password',
-        'radius_secret',
-        'identity',
-        'type',
+        'auth_port',
+        'acct_port',
+        'shared_secret',
+        'sql_driver',
+        'sql_host',
+        'sql_port',
+        'sql_database',
+        'sql_username',
+        'sql_password',
         'is_default',
         'is_active',
         'last_status',
@@ -39,32 +37,17 @@ class NasDevice extends Model
     ];
 
     protected $casts = [
-        'api_password' => 'encrypted',
-        'radius_secret' => 'encrypted',
+        'shared_secret' => 'encrypted',
+        'sql_password' => 'encrypted',
         'is_default' => 'boolean',
         'is_active' => 'boolean',
         'last_seen_at' => 'datetime',
     ];
 
     protected $hidden = [
-        'api_password',
-        'radius_secret',
+        'shared_secret',
+        'sql_password',
     ];
-
-    public function customers(): HasMany
-    {
-        return $this->hasMany(Customer::class, 'nas_device_id');
-    }
-
-    public function hotspotUsers(): HasMany
-    {
-        return $this->hasMany(HotspotUser::class, 'nas_device_id');
-    }
-
-    public function vouchers(): HasMany
-    {
-        return $this->hasMany(Voucher::class, 'nas_device_id');
-    }
 
     public function statusBadge(): string
     {

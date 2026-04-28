@@ -7,6 +7,7 @@ use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\CustomerPortalController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\GenieacsController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\HotspotUserController;
 use App\Http\Controllers\InvoiceController;
@@ -14,6 +15,7 @@ use App\Http\Controllers\NasDeviceController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PackageController;
 use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\RadiusServerController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\SuperAdminController;
@@ -109,6 +111,28 @@ Route::middleware(['auth', 'verified', 'tenant.usable', 'role:admin,owner,teknis
         Route::post('/vouchers', [VoucherController::class, 'store'])->name('vouchers.store');
         Route::delete('/vouchers/batch', [VoucherController::class, 'destroyBatch'])->name('vouchers.batch.destroy');
         Route::get('/vouchers/print', [VoucherController::class, 'print'])->name('vouchers.print');
+    });
+
+    Route::middleware(['role:admin,owner', 'plan.feature:radius'])->group(function () {
+        Route::resource('radius', RadiusServerController::class)->except(['show']);
+        Route::post('/radius/{radius}/test', [RadiusServerController::class, 'test'])->name('radius.test');
+    });
+
+    Route::middleware(['role:admin,owner', 'plan.feature:genieacs'])->prefix('genieacs')->name('genieacs.')->group(function () {
+        Route::get('/', [GenieacsController::class, 'index'])->name('index');
+        Route::get('/create', [GenieacsController::class, 'create'])->name('create');
+        Route::post('/', [GenieacsController::class, 'store'])->name('store');
+        Route::get('/{genieacs}/edit', [GenieacsController::class, 'edit'])->name('edit');
+        Route::put('/{genieacs}', [GenieacsController::class, 'update'])->name('update');
+        Route::delete('/{genieacs}', [GenieacsController::class, 'destroy'])->name('destroy');
+        Route::post('/{genieacs}/test', [GenieacsController::class, 'test'])->name('test');
+        Route::get('/{genieacs}/devices', [GenieacsController::class, 'devices'])->name('devices');
+        Route::get('/{genieacs}/devices/{deviceId}', [GenieacsController::class, 'deviceShow'])
+            ->where('deviceId', '.*')->name('devices.show');
+        Route::post('/{genieacs}/devices/{deviceId}/reboot', [GenieacsController::class, 'deviceReboot'])
+            ->where('deviceId', '.*')->name('devices.reboot');
+        Route::post('/{genieacs}/devices/{deviceId}/refresh', [GenieacsController::class, 'deviceRefresh'])
+            ->where('deviceId', '.*')->name('devices.refresh');
     });
 
     Route::get('/invoices', [InvoiceController::class, 'index'])->name('invoices.index');
