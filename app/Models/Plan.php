@@ -24,7 +24,10 @@ class Plan extends Model
         'name',
         'price_idr',
         'max_customers',
+        'max_nas',
         'allow_mikrotik',
+        'allow_hotspot',
+        'allow_voucher',
         'allow_whatsapp',
         'allow_pdf_invoice',
         'features',
@@ -35,6 +38,8 @@ class Plan extends Model
     protected $casts = [
         'features' => 'array',
         'allow_mikrotik' => 'boolean',
+        'allow_hotspot' => 'boolean',
+        'allow_voucher' => 'boolean',
         'allow_whatsapp' => 'boolean',
         'allow_pdf_invoice' => 'boolean',
         'is_active' => 'boolean',
@@ -43,5 +48,17 @@ class Plan extends Model
     public function isPaid(): bool
     {
         return $this->price_idr > 0;
+    }
+
+    public function allows(string $feature): bool
+    {
+        return match ($feature) {
+            'mikrotik' => (bool) $this->allow_mikrotik,
+            'hotspot' => (bool) $this->allow_hotspot,
+            'voucher' => (bool) $this->allow_voucher,
+            'whatsapp' => (bool) $this->allow_whatsapp,
+            'pdf_invoice' => (bool) $this->allow_pdf_invoice,
+            default => false,
+        };
     }
 }

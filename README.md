@@ -70,6 +70,9 @@ CI workflow yang harus dilewati: `.github/workflows/ci.yml` (Pint test + `php ar
   - Statistik: total pelanggan, pendapatan bulanan, tunggakan.
 - **Customer Portal (`/portal`)**: pelanggan login mandiri, lihat tagihan, riwayat pembayaran, dan ubah profil/password.
 - **Super Admin Console (`/superadmin`)**: read-only listing tenant (statistik trial / active / suspended) dan paket subscription.
+- **NAS / Router catalog (`/nas`)**: 1 tenant bisa punya banyak router MikroTik. CRUD + tes koneksi, password disimpan terenkripsi. Dibatasi `Plan.max_nas`.
+- **Hotspot users (`/hotspot`)**: CRUD user hotspot (mac, profile, expired). Saat NAS di-set dan status aktif, push otomatis ke `/ip/hotspot/user`. Dibatasi `Plan.allow_hotspot`.
+- **Voucher hotspot (`/vouchers`)**: generate batch (mass-create dengan kode unik 5–16 char), filter per status (`available`/`sold`/`used`/`expired`), halaman print friendly. Dibatasi `Plan.allow_voucher`.
 - **Notifikasi in-app**: bell di navbar (per-user), basis tabel `notifications` Laravel + `App\Notifications\GenericNotification`. Mark-as-read individual atau semua.
 - **Mode terang / gelap**: toggle di navbar, persist via cookie `theme=light|dark`. Memakai atribut `data-bs-theme` Bootstrap 5.3 + override custom di `public/css/adminkit.css`.
 - **Multi-tenant**: data pelanggan/invoice/pembayaran terisolasi otomatis lewat global scope `App\Scopes\TenantScope`. Setiap query model ber-tenant otomatis di-filter `tenant_id = auth()->user()->tenant_id`.
@@ -81,9 +84,8 @@ CI workflow yang harus dilewati: `.github/workflows/ci.yml` (Pint test + `php ar
 - **Notifikasi WhatsApp** via Fonnte (per-tenant token).
 - **Anti-abuse register**: cooldown email 30 hari + rate-limit IP (3/hari) + device fingerprint (2/hari) — lihat `App\Services\AntiAbuse`.
 
-> Roadmap (akan menyusul di PR berikutnya): integrasi MikroTik / Hotspot / Voucher penuh,
-> RADIUS + GenieACS, monitoring on/off perangkat, remote IP customer, WhatsApp auto-billing,
-> dan chat realtime.
+> Roadmap (akan menyusul di PR berikutnya): RADIUS + GenieACS, monitoring on/off perangkat,
+> remote IP customer, WhatsApp auto-billing reminder, dan chat realtime.
 
 ---
 

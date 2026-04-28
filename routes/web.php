@@ -8,13 +8,16 @@ use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\CustomerPortalController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\HotspotUserController;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\NasDeviceController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PackageController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\SuperAdminController;
+use App\Http\Controllers\VoucherController;
 use App\Http\Controllers\Webhooks\PakasirWebhookController;
 use Illuminate\Support\Facades\Route;
 
@@ -90,6 +93,23 @@ Route::middleware(['auth', 'verified', 'tenant.usable', 'role:admin,owner,teknis
 
     Route::resource('customers', CustomerController::class);
     Route::resource('packages', PackageController::class)->except(['show']);
+
+    Route::middleware('plan.feature:mikrotik')->group(function () {
+        Route::resource('nas', NasDeviceController::class)->except(['show']);
+        Route::post('/nas/{nas}/test', [NasDeviceController::class, 'test'])->name('nas.test');
+    });
+
+    Route::middleware('plan.feature:hotspot')->group(function () {
+        Route::resource('hotspot', HotspotUserController::class)->except(['show']);
+    });
+
+    Route::middleware('plan.feature:voucher')->group(function () {
+        Route::get('/vouchers', [VoucherController::class, 'index'])->name('vouchers.index');
+        Route::get('/vouchers/create', [VoucherController::class, 'create'])->name('vouchers.create');
+        Route::post('/vouchers', [VoucherController::class, 'store'])->name('vouchers.store');
+        Route::delete('/vouchers/batch', [VoucherController::class, 'destroyBatch'])->name('vouchers.batch.destroy');
+        Route::get('/vouchers/print', [VoucherController::class, 'print'])->name('vouchers.print');
+    });
 
     Route::get('/invoices', [InvoiceController::class, 'index'])->name('invoices.index');
     Route::get('/invoices/create', [InvoiceController::class, 'create'])->name('invoices.create');
