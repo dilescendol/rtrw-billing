@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
@@ -41,7 +42,26 @@ class LoginController extends Controller
         RateLimiter::clear($key);
         $request->session()->regenerate();
 
-        return redirect()->intended(route('dashboard'));
+        return redirect()->intended($this->landingRouteFor($request->user()));
+    }
+
+    /**
+     * Where to send the user immediately after a successful login,
+     * based on their role.
+     */
+    protected function landingRouteFor(?User $user): string
+    {
+        if (! $user) {
+            return route('home');
+        }
+        if ($user->isCustomer()) {
+            return route('portal.dashboard');
+        }
+        if ($user->isSuperAdmin()) {
+            return route('superadmin.tenants.index');
+        }
+
+        return route('dashboard');
     }
 
     protected function throttleKey(Request $request, string $email): string

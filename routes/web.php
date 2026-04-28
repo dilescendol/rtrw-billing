@@ -5,13 +5,16 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\CustomerPortalController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PackageController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SubscriptionController;
+use App\Http\Controllers\SuperAdminController;
 use App\Http\Controllers\Webhooks\PakasirWebhookController;
 use Illuminate\Support\Facades\Route;
 
@@ -44,6 +47,13 @@ Route::middleware('auth')->group(function () {
         ->middleware('throttle:6,1')->name('verification.send');
 });
 
+// ----- Notifications (any authenticated user) -----
+Route::middleware('auth')->group(function () {
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::post('/notifications/{id}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
+    Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.read_all');
+});
+
 // ----- Subscription / suspended (auth + verified, but NOT tenant.usable) -----
 Route::middleware(['auth'])->prefix('subscription')->name('subscription.')->group(function () {
     Route::get('/suspended', [SubscriptionController::class, 'suspended'])->name('suspended');
@@ -52,8 +62,30 @@ Route::middleware(['auth'])->prefix('subscription')->name('subscription.')->grou
     Route::get('/plans/{plan}/return', [SubscriptionController::class, 'return'])->name('return');
 });
 
-// ----- App (requires usable tenant) -----
-Route::middleware(['auth', 'verified', 'tenant.usable'])->group(function () {
+// ----- Super Admin (platform-wide) -----
+Route::middleware(['auth', 'role:superadmin,platform_admin'])
+    ->prefix('superadmin')
+    ->name('superadmin.')
+    ->group(function () {
+        Route::get('/tenants', [SuperAdminController::class, 'tenants'])->name('tenants.index');
+        Route::get('/plans', [SuperAdminController::class, 'plans'])->name('plans.index');
+    });
+
+// ----- Customer Portal -----
+Route::middleware(['auth', 'customer.portal'])
+    ->prefix('portal')
+    ->name('portal.')
+    ->group(function () {
+        Route::get('/', [CustomerPortalController::class, 'dashboard'])->name('dashboard');
+        Route::get('/invoices', [CustomerPortalController::class, 'invoices'])->name('invoices.index');
+        Route::get('/invoices/{invoice}', [CustomerPortalController::class, 'invoiceShow'])->name('invoices.show');
+        Route::get('/payments', [CustomerPortalController::class, 'payments'])->name('payments.index');
+        Route::get('/profile', [CustomerPortalController::class, 'profile'])->name('profile');
+        Route::post('/profile', [CustomerPortalController::class, 'updateProfile'])->name('profile.update');
+    });
+
+// ----- Tenant App (admin / teknisi / kolektor) -----
+Route::middleware(['auth', 'verified', 'tenant.usable', 'role:admin,owner,teknisi,kolektor'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     Route::resource('customers', CustomerController::class);
@@ -74,7 +106,7 @@ Route::middleware(['auth', 'verified', 'tenant.usable'])->group(function () {
     Route::post('/payments/{payment}/verify', [PaymentController::class, 'verify'])->name('payments.verify');
     Route::post('/payments/{payment}/reject', [PaymentController::class, 'reject'])->name('payments.reject');
 
-    Route::prefix('settings')->name('settings.')->group(function () {
+    Route::prefix('settings')->name('settings.')->middleware('role:admin,owner')->group(function () {
         Route::get('/', [SettingsController::class, 'index'])->name('index');
         Route::post('/business', [SettingsController::class, 'updateBusiness'])->name('business');
         Route::post('/pakasir', [SettingsController::class, 'updatePakasir'])->name('pakasir');

@@ -6,7 +6,13 @@ Stack: **Laravel 11 · Bootstrap 5 (AdminKit-style) · SQLite/MySQL · Pakasir �
 
 ## Fitur Utama
 
-- **Public**: landing page, login, register, lupa password.
+- **Public**: landing page (12 fitur produk + roadmap), login, register, lupa password.
+- **Role / RBAC**:
+  - `superadmin` — operator platform, lihat semua tenant + paket.
+  - `admin` / `owner` — admin tenant (pemilik bisnis RT/RW Net), akses penuh dashboard.
+  - `teknisi` — staf teknis: lihat dashboard, pelanggan, invoice; tidak bisa ubah Settings/Subscription.
+  - `kolektor` — staf penagihan: sama dengan teknisi, fokus ke invoice & payments.
+  - `customer` — pelanggan akhir, login ke `/portal` (panel pelanggan).
 - **Owner Dashboard**:
   - Manajemen pelanggan (CRUD, status aktif/diisolir/berhenti, PPPoE creds).
   - Manajemen paket internet (harga, kecepatan, MikroTik profile).
@@ -14,6 +20,10 @@ Stack: **Laravel 11 · Bootstrap 5 (AdminKit-style) · SQLite/MySQL · Pakasir �
   - PDF invoice via DomPDF.
   - Pembayaran via Pakasir (auto, webhook callback) atau manual transfer + upload bukti.
   - Statistik: pelanggan, pendapatan, tunggakan.
+- **Customer Portal (`/portal`)**: pelanggan login dan melihat tagihan, riwayat pembayaran, dan profil akun.
+- **Super Admin Console (`/superadmin`)**: read-only listing tenant (statistik trial/active/suspended) dan paket subscription.
+- **Notifikasi in-app**: bell di navbar (per-user), basis tabel `notifications` Laravel + `App\Notifications\GenericNotification`. Bisa mark-as-read individual atau semua.
+- **Mode terang / gelap**: toggle di navbar, persist via cookie `theme=light|dark`. Memakai `data-bs-theme` Bootstrap 5.3 + custom override di `public/css/adminkit.css`.
 - **Multi-tenant**: data pelanggan/invoice/pembayaran terisolasi otomatis pakai global scope `TenantScope`.
 - **Trial 3 hari → SUSPEND**: setelah trial habis, akun otomatis di-suspend (bukan auto-charge). Owner harus upgrade manual.
 - **Pakasir 2 scope**:
@@ -22,6 +32,9 @@ Stack: **Laravel 11 · Bootstrap 5 (AdminKit-style) · SQLite/MySQL · Pakasir �
 - **MikroTik PPPoE**: auto-create user saat customer dibuat, auto-isolir saat status diubah.
 - **Notifikasi WhatsApp** via Fonnte (per-tenant token).
 - **Anti-abuse register**: cooldown email 30 hari + rate-limit IP (3/hari) + device fingerprint (2/hari).
+
+> Roadmap (akan menyusul di PR berikutnya): NAS/Hotspot/Voucher penuh, RADIUS + GenieACS, monitoring Mikrotik on/off,
+> remote IP customer, dan chat realtime.
 
 ## Quick Start
 
@@ -38,7 +51,15 @@ php artisan serve
 
 Lalu buka http://127.0.0.1:8000.
 
-**Akun demo (dari seeder)**: `demo@rtrw.test` / `password`
+**Akun demo (dari seeder)** — semua password: `password`
+
+| Email | Role | Login ke |
+| --- | --- | --- |
+| `super@rtrw.test` | `superadmin` | `/superadmin/tenants` |
+| `demo@rtrw.test` | `admin` (owner tenant demo) | `/dashboard` |
+| `teknisi@rtrw.test` | `teknisi` | `/dashboard` (tanpa menu Settings) |
+| `kolektor@rtrw.test` | `kolektor` | `/dashboard` (tanpa menu Settings) |
+| `pelanggan@rtrw.test` | `customer` (terhubung ke Pelanggan 1) | `/portal` |
 
 ## Scheduler
 

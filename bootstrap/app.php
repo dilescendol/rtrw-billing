@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Middleware\EnsureCustomer;
+use App\Http\Middleware\EnsureRole;
 use App\Http\Middleware\EnsureTenantUsable;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -14,6 +16,8 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->alias([
             'tenant.usable' => EnsureTenantUsable::class,
+            'role' => EnsureRole::class,
+            'customer.portal' => EnsureCustomer::class,
         ]);
         $middleware->validateCsrfTokens(except: [
             'webhooks/pakasir/*',
