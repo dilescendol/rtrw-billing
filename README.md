@@ -83,6 +83,7 @@ CI workflow yang harus dilewati: `.github/workflows/ci.yml` (Pint test + `php ar
 - **MikroTik PPPoE**: auto-create PPP secret saat customer dibuat, auto-isolir saat status diubah ke `diisolir`/`berhenti`.
 - **RADIUS / FreeRADIUS (`/radius`)**: 1 tenant bisa punya banyak server. Konfigur host + secret + SQL backend (rlm_sql); customer otomatis di-push ke `radcheck`/`radreply`/`radusergroup`/`radgroupreply` saat create/update; dihapus saat customer dihapus. Dibatasi `Plan.allow_radius`.
 - **GenieACS / TR-069 (`/genieacs`)**: konfigur NBI URL + Basic Auth, list devices, halaman detail, tombol refresh & reboot. Dibatasi `Plan.allow_genieacs`.
+- **WhatsApp auto-billing (`/whatsapp/templates`, `/whatsapp/logs`)**: template per event (`invoice_created`, `invoice_due_soon`, `invoice_overdue`, `payment_received`, `customer_isolated`, `voucher_created`) dengan placeholder `@{{nama}}` dst. Pesan otomatis dikirim saat invoice dibuat & saat pembayaran diterima. Command `invoice:remind` (scheduler harian 09:00) mengirim pengingat H-3 / H-1 dan H+1 / H+3 / H+7. Semua percobaan tercatat di `whatsapp_logs`. Dibatasi `Plan.allow_whatsapp`.
 - **Notifikasi WhatsApp** via Fonnte (per-tenant token).
 - **Anti-abuse register**: cooldown email 30 hari + rate-limit IP (3/hari) + device fingerprint (2/hari) — lihat `App\Services\AntiAbuse`.
 

@@ -90,6 +90,20 @@
                         </a>
                     </li>
 
+                    @if($plan && $plan->allows('whatsapp') && auth()->user()->isAdmin())
+                    <li class="sidebar-header">WhatsApp</li>
+                    <li class="sidebar-item">
+                        <a href="{{ route('whatsapp.templates.index') }}" class="sidebar-link {{ request()->routeIs('whatsapp.templates.*') ? 'active' : '' }}">
+                            <i class="bi bi-chat-text"></i><span>Template</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-item">
+                        <a href="{{ route('whatsapp.logs.index') }}" class="sidebar-link {{ request()->routeIs('whatsapp.logs.*') ? 'active' : '' }}">
+                            <i class="bi bi-clock-history"></i><span>Log Pengiriman</span>
+                        </a>
+                    </li>
+                    @endif
+
                     <li class="sidebar-header">Konfigurasi</li>
                     @if(auth()->user()->isAdmin())
                     <li class="sidebar-item">

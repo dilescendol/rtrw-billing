@@ -72,12 +72,14 @@ class NasDeviceController extends Controller
 
     protected function validateData(Request $request, ?int $ignoreId = null): array
     {
+        // On create the password column is NOT NULL — require it. On update,
+        // empty means "keep current" and the controller unsets it.
         $data = $request->validate([
             'name' => ['required', 'string', 'max:120'],
             'host' => ['required', 'string', 'max:255'],
             'api_port' => ['nullable', 'integer', 'min:1', 'max:65535'],
             'api_user' => ['required', 'string', 'max:120'],
-            'api_password' => ['nullable', 'string', 'max:255'],
+            'api_password' => [$ignoreId ? 'nullable' : 'required', 'string', 'max:255'],
             'identity' => ['nullable', 'string', 'max:120'],
             'type' => ['required', 'in:mikrotik,other'],
             'is_default' => ['nullable', 'boolean'],

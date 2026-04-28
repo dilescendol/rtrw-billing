@@ -21,6 +21,8 @@ use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\SuperAdminController;
 use App\Http\Controllers\VoucherController;
 use App\Http\Controllers\Webhooks\PakasirWebhookController;
+use App\Http\Controllers\WhatsappLogController;
+use App\Http\Controllers\WhatsappTemplateController;
 use Illuminate\Support\Facades\Route;
 
 // ----- Public -----
@@ -149,6 +151,14 @@ Route::middleware(['auth', 'verified', 'tenant.usable', 'role:admin,owner,teknis
     Route::post('/payments/store/{invoice}', [PaymentController::class, 'store'])->name('payments.store');
     Route::post('/payments/{payment}/verify', [PaymentController::class, 'verify'])->name('payments.verify');
     Route::post('/payments/{payment}/reject', [PaymentController::class, 'reject'])->name('payments.reject');
+
+    Route::middleware(['role:admin,owner', 'plan.feature:whatsapp'])->prefix('whatsapp')->name('whatsapp.')->group(function () {
+        Route::get('/templates', [WhatsappTemplateController::class, 'index'])->name('templates.index');
+        Route::get('/templates/{event}/edit', [WhatsappTemplateController::class, 'edit'])->name('templates.edit');
+        Route::put('/templates/{event}', [WhatsappTemplateController::class, 'update'])->name('templates.update');
+        Route::post('/templates/test', [WhatsappTemplateController::class, 'test'])->name('templates.test');
+        Route::get('/logs', [WhatsappLogController::class, 'index'])->name('logs.index');
+    });
 
     Route::prefix('settings')->name('settings.')->middleware('role:admin,owner')->group(function () {
         Route::get('/', [SettingsController::class, 'index'])->name('index');

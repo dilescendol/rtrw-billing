@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Customer;
 use App\Models\Invoice;
+use App\Models\WhatsappTemplate;
 use App\Services\InvoiceGenerator;
 use App\Services\PakasirService;
+use App\Services\WhatsappNotifier;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
@@ -51,6 +53,9 @@ class InvoiceController extends Controller
         if (! $invoice) {
             return back()->withErrors(['customer_id' => 'Invoice untuk periode ini sudah ada atau pelanggan tidak memiliki paket.'])->withInput();
         }
+
+        (new WhatsappNotifier(app('current_tenant')))
+            ->send(WhatsappTemplate::EVENT_INVOICE_CREATED, $customer, [], $invoice);
 
         return redirect()->route('invoices.show', $invoice)->with('success', 'Invoice dibuat.');
     }

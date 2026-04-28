@@ -39,7 +39,7 @@ class CustomerPortalController extends Controller
     public function invoiceShow(Request $request, Invoice $invoice)
     {
         $customer = $request->user()->customer;
-        abort_unless($invoice->customer_id === $customer->id, 404);
+        abort_unless((int) $invoice->customer_id === (int) $customer->id, 404);
 
         return view('portal.invoices.show', compact('customer', 'invoice'));
     }
