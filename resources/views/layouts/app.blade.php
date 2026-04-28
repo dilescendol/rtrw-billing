@@ -41,6 +41,29 @@
                         </a>
                     </li>
 
+                    @php($plan = optional($tenant)->plan)
+                    @if($plan && $plan->allows('mikrotik'))
+                    <li class="sidebar-item">
+                        <a href="{{ route('nas.index') }}" class="sidebar-link {{ request()->routeIs('nas.*') ? 'active' : '' }}">
+                            <i class="bi bi-router"></i><span>NAS / Router</span>
+                        </a>
+                    </li>
+                    @endif
+                    @if($plan && $plan->allows('hotspot'))
+                    <li class="sidebar-item">
+                        <a href="{{ route('hotspot.index') }}" class="sidebar-link {{ request()->routeIs('hotspot.*') ? 'active' : '' }}">
+                            <i class="bi bi-wifi"></i><span>Hotspot</span>
+                        </a>
+                    </li>
+                    @endif
+                    @if($plan && $plan->allows('voucher'))
+                    <li class="sidebar-item">
+                        <a href="{{ route('vouchers.index') }}" class="sidebar-link {{ request()->routeIs('vouchers.*') ? 'active' : '' }}">
+                            <i class="bi bi-ticket-perforated"></i><span>Voucher</span>
+                        </a>
+                    </li>
+                    @endif
+
                     <li class="sidebar-header">Tagihan</li>
                     <li class="sidebar-item">
                         <a href="{{ route('invoices.index') }}" class="sidebar-link {{ request()->routeIs('invoices.*') ? 'active' : '' }}">
