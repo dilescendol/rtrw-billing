@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Invoice;
 use App\Models\Tenant;
 use App\Models\TenantSubscription;
+use App\Models\WhatsappTemplate;
 use App\Services\PakasirService;
+use App\Services\WhatsappNotifier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -75,6 +77,11 @@ class PakasirWebhookController extends Controller
                     'reference' => $orderId,
                     'status' => 'verified',
                 ]);
+                $fresh->load('customer');
+                if ($fresh->customer) {
+                    (new WhatsappNotifier($tenant))
+                        ->send(WhatsappTemplate::EVENT_PAYMENT_RECEIVED, $fresh->customer, [], $fresh);
+                }
             });
         }
 

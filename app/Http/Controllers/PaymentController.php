@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Invoice;
 use App\Models\Payment;
+use App\Models\WhatsappTemplate;
+use App\Services\WhatsappNotifier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -88,6 +90,11 @@ class PaymentController extends Controller
                     'paid_at' => $payment->paid_at,
                     'payment_method' => $payment->method,
                 ]);
+                $invoice->load('customer');
+                if ($invoice->customer) {
+                    (new WhatsappNotifier(app('current_tenant')))
+                        ->send(WhatsappTemplate::EVENT_PAYMENT_RECEIVED, $invoice->customer, [], $invoice);
+                }
             }
         });
 
