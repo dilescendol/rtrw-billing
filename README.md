@@ -34,6 +34,49 @@ CI workflow yang harus dilewati: `.github/workflows/ci.yml` (Pint test + `php ar
 
 ---
 
+## 1.b Status Roadmap (untuk AI agent / developer berikutnya)
+
+Pengerjaan dibagi per fase per PR. **Jangan ulang fitur yang sudah `Done`** — cek tabel di bawah dan PR-nya sebelum mulai kerjaan baru.
+
+| #  | Fitur (request awal)                                                         | Status         | PR / Lokasi                                                                                     |
+| -- | ---------------------------------------------------------------------------- | -------------- | ----------------------------------------------------------------------------------------------- |
+| 1  | Sistem superadmin & admin/owner                                              | **Done**       | PR #4 — `/superadmin/*`, role `superadmin`/`admin`/`owner`/`teknisi`/`kolektor`/`customer`      |
+| 2  | Landing page yang menampilkan fungsi & fitur produk                          | **Done**       | PR #4 — `resources/views/public/landing.blade.php` (12 fitur + badge Tersedia/Roadmap)          |
+| 3  | NAS, MikroTik, PPPoE, Hotspot, Voucher, limit per profile subscription       | **Done**       | PR #5 — `/nas`, `/hotspot`, `/vouchers`, gating `Plan.max_nas`/`allow_hotspot`/`allow_voucher`  |
+| 4  | RADIUS terintegrasi GenieACS                                                 | **Done**       | PR #6 — `/radius` (FreeRADIUS-SQL), `/genieacs` (TR-069 NBI)                                    |
+| 5  | Toggle terang/gelap                                                          | **Done**       | PR #4 — toggle navbar, cookie `theme`, `data-bs-theme` Bootstrap 5.3                            |
+| 6  | WhatsApp gateway untuk auto-billing ke customer                              | **Done**       | PR #7 — `/whatsapp/templates`, `/whatsapp/logs`, command `invoice:remind` (daily 09:00 H-3/-1/+1/+3/+7) |
+| 7  | Panel customer                                                               | **Done**       | PR #4 — `/portal` (dashboard, invoices, payments, profile)                                      |
+| 8  | Owner dapat memantau MikroTik on/off                                         | **Roadmap**    | Phase 5 — belum dikerjakan                                                                      |
+| 9  | Owner dapat remote IP customer tanpa visit rumah                             | **Roadmap**    | Phase 5 — belum dikerjakan (rencana via GenieACS reboot/setParameter, ext. SSH/winbox tunnel)   |
+| 10 | Role per pekerjaan (admin, teknisi, kolektor, dll)                           | **Done**       | PR #4 — middleware `role:` + redirect login per-role                                            |
+| 11 | Notif bar di samping akun dropdown sesuai role                               | **Done**       | PR #4 — bell navbar + tabel `notifications` Laravel + mark-read                                 |
+| 12 | Fitur chat                                                                   | **Roadmap**    | Phase 6 — belum dikerjakan (rencana realtime via broadcasting / Reverb)                         |
+
+**Riwayat PR:**
+
+- PR #4 — Phase 1: Foundation (RBAC + portal + dark mode + notif + landing + RBAC seeder). **Merged.**
+- PR #5 — Phase 2: NAS catalog + Hotspot users + Voucher batch + plan-feature gating. **Merged.**
+- PR #6 — Phase 3: RADIUS (FreeRADIUS SQL push) + GenieACS NBI explorer. **Merged.**
+- PR #7 — Phase 4: WhatsApp auto-billing reminders + template editor + log viewer + 2 hotfix PR #6 (CustomerPortal MySQL int-vs-string FK, NasDevice api_password NOT NULL). **Merged.**
+
+**Sisa pekerjaan (urutan rekomendasi):**
+
+1. **Phase 5 — Monitor & Remote.** Fitur 8 + 9. Rencana garis besar:
+   - Worker / scheduler poll MikroTik tiap N menit untuk uptime + status `/ip/cloud` & PPP active connection. Simpan ke tabel `nas_health_pings` & event `device.went_offline` / `device.came_online`. Kirim notifikasi ke owner via WhatsApp (re-use `WhatsappNotifier` Phase 4) + bell.
+   - Remote IP customer: gunakan GenieACS NBI (`getDevice` + `setParameterValues`) yang sudah ada Phase 3 untuk reboot ONT, ganti SSID, dll. Tambah halaman per-customer "Tindakan Remote" yang panggil GenieACS by serial/MAC.
+2. **Phase 6 — Chat realtime.** Fitur 12. Pakai Laravel Reverb / Pusher; channel per-tenant + per-conversation; integrasi ke navbar dengan unread badge.
+
+**Konvensi penting saat melanjutkan:**
+
+- Branch baru selalu off `devin/rtrw-billing-scaffold` (default branch repo).
+- Setiap fase = 1 PR. Tulis di body PR fase berapa, fitur nomor berapa.
+- Plan-gating wajib pakai middleware `plan.feature:<key>` + tambah kolom `Plan.allow_<key>` di migration baru (bukan modifikasi migrasi lama).
+- Test wajib lulus + Pint clean sebelum push (`./vendor/bin/pint --test && php artisan test`). Saat ini tersedia 33 test (state setelah Phase 4).
+- Update tabel di section 1.b ini setiap menyelesaikan fase agar agent berikutnya tidak mengulang.
+
+---
+
 ## 2. Stack & Versi
 
 | Komponen        | Versi / Catatan                                                 |
@@ -87,8 +130,9 @@ CI workflow yang harus dilewati: `.github/workflows/ci.yml` (Pint test + `php ar
 - **Notifikasi WhatsApp** via Fonnte (per-tenant token).
 - **Anti-abuse register**: cooldown email 30 hari + rate-limit IP (3/hari) + device fingerprint (2/hari) — lihat `App\Services\AntiAbuse`.
 
-> Roadmap (akan menyusul di PR berikutnya): monitoring on/off perangkat realtime,
-> remote IP customer, WhatsApp auto-billing reminder, dan chat realtime.
+> **Roadmap** (PR berikutnya — lihat juga section 1.b): **Phase 5** — monitoring on/off
+> perangkat MikroTik realtime + remote IP customer (via GenieACS); **Phase 6** — chat
+> realtime (Laravel Reverb / Pusher).
 
 ---
 
