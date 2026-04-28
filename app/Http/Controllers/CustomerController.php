@@ -4,7 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Customer;
 use App\Models\Package;
+use App\Models\RadiusServer;
+use App\Models\Tenant;
 use App\Services\MikrotikService;
+use App\Services\RadiusManager;
 use Illuminate\Http\Request;
 
 class CustomerController extends Controller
@@ -56,6 +59,8 @@ class CustomerController extends Controller
             (new MikrotikService($tenant))->createPppoeUser($customer);
         }
 
+        $this->pushToRadius($customer, $tenant);
+
         return redirect()->route('customers.index')->with('success', 'Pelanggan berhasil ditambahkan.');
     }
 
@@ -89,14 +94,38 @@ class CustomerController extends Controller
             }
         }
 
+        $this->pushToRadius($customer, app('current_tenant'));
+
         return redirect()->route('customers.show', $customer)->with('success', 'Data pelanggan diperbarui.');
     }
 
     public function destroy(Customer $customer)
     {
+        $username = $customer->pppoe_username;
+        $tenant = app('current_tenant');
         $customer->delete();
+        if ($username) {
+            $this->forEachRadius($tenant, fn (RadiusManager $r) => $r->deleteCustomer($username));
+        }
 
         return redirect()->route('customers.index')->with('success', 'Pelanggan dihapus.');
+    }
+
+    protected function pushToRadius(Customer $customer, ?Tenant $tenant): void
+    {
+        if (! $tenant || ! $tenant->plan?->allows('radius') || ! $customer->pppoe_username) {
+            return;
+        }
+        $this->forEachRadius($tenant, fn (RadiusManager $r) => $r->upsertCustomer($customer));
+    }
+
+    protected function forEachRadius(Tenant $tenant, \Closure $fn): void
+    {
+        RadiusServer::where('tenant_id', $tenant->id)
+            ->where('is_active', true)
+            ->orderByDesc('is_default')
+            ->get()
+            ->each(fn (RadiusServer $s) => $fn(new RadiusManager($s)));
     }
 
     protected function validateData(Request $request, ?int $ignoreId = null): array

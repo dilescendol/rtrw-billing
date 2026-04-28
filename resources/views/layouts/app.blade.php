@@ -1,5 +1,6 @@
+@php($theme = request()->cookie('theme', 'light'))
 <!doctype html>
-<html lang="id">
+<html lang="id" data-bs-theme="{{ $theme }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -40,6 +41,43 @@
                         </a>
                     </li>
 
+                    @php($plan = optional($tenant)->plan)
+                    @if($plan && $plan->allows('mikrotik'))
+                    <li class="sidebar-item">
+                        <a href="{{ route('nas.index') }}" class="sidebar-link {{ request()->routeIs('nas.*') ? 'active' : '' }}">
+                            <i class="bi bi-router"></i><span>NAS / Router</span>
+                        </a>
+                    </li>
+                    @endif
+                    @if($plan && $plan->allows('hotspot'))
+                    <li class="sidebar-item">
+                        <a href="{{ route('hotspot.index') }}" class="sidebar-link {{ request()->routeIs('hotspot.*') ? 'active' : '' }}">
+                            <i class="bi bi-wifi"></i><span>Hotspot</span>
+                        </a>
+                    </li>
+                    @endif
+                    @if($plan && $plan->allows('voucher'))
+                    <li class="sidebar-item">
+                        <a href="{{ route('vouchers.index') }}" class="sidebar-link {{ request()->routeIs('vouchers.*') ? 'active' : '' }}">
+                            <i class="bi bi-ticket-perforated"></i><span>Voucher</span>
+                        </a>
+                    </li>
+                    @endif
+                    @if($plan && $plan->allows('radius') && auth()->user()->isAdmin())
+                    <li class="sidebar-item">
+                        <a href="{{ route('radius.index') }}" class="sidebar-link {{ request()->routeIs('radius.*') ? 'active' : '' }}">
+                            <i class="bi bi-shield-lock"></i><span>RADIUS</span>
+                        </a>
+                    </li>
+                    @endif
+                    @if($plan && $plan->allows('genieacs') && auth()->user()->isAdmin())
+                    <li class="sidebar-item">
+                        <a href="{{ route('genieacs.index') }}" class="sidebar-link {{ request()->routeIs('genieacs.*') ? 'active' : '' }}">
+                            <i class="bi bi-broadcast"></i><span>GenieACS / TR-069</span>
+                        </a>
+                    </li>
+                    @endif
+
                     <li class="sidebar-header">Tagihan</li>
                     <li class="sidebar-item">
                         <a href="{{ route('invoices.index') }}" class="sidebar-link {{ request()->routeIs('invoices.*') ? 'active' : '' }}">
@@ -53,6 +91,7 @@
                     </li>
 
                     <li class="sidebar-header">Konfigurasi</li>
+                    @if(auth()->user()->isAdmin())
                     <li class="sidebar-item">
                         <a href="{{ route('settings.index') }}" class="sidebar-link {{ request()->routeIs('settings.*') ? 'active' : '' }}">
                             <i class="bi bi-gear"></i><span>Pengaturan</span>
@@ -63,6 +102,7 @@
                             <i class="bi bi-stars"></i><span>Subscription</span>
                         </a>
                     </li>
+                    @endif
                 </ul>
                 <div class="sidebar-footer">
                     @if($tenant)
@@ -88,13 +128,19 @@
                 <button class="btn-burger" type="button" id="sidebar-toggle"><i class="bi bi-list fs-4"></i></button>
                 <div class="ms-auto d-flex align-items-center gap-3">
                     <span class="text-muted small d-none d-md-inline">Halo, {{ auth()->user()->name }}</span>
+                    @include('partials.theme_toggle')
+                    @include('partials.notification_bell')
                     <div class="dropdown">
                         <button class="btn btn-light btn-sm dropdown-toggle" data-bs-toggle="dropdown">
                             <i class="bi bi-person-circle"></i>
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end">
-                            <li><a class="dropdown-item" href="{{ route('settings.index') }}"><i class="bi bi-gear me-2"></i>Pengaturan</a></li>
-                            <li><a class="dropdown-item" href="{{ route('subscription.plans') }}"><i class="bi bi-stars me-2"></i>Subscription</a></li>
+                            <li class="dropdown-header small"><span class="badge text-bg-primary">{{ auth()->user()->roleLabel() }}</span></li>
+                            @if(auth()->user()->isAdmin())
+                                <li><a class="dropdown-item" href="{{ route('settings.index') }}"><i class="bi bi-gear me-2"></i>Pengaturan</a></li>
+                                <li><a class="dropdown-item" href="{{ route('subscription.plans') }}"><i class="bi bi-stars me-2"></i>Subscription</a></li>
+                            @endif
+                            <li><a class="dropdown-item" href="{{ route('notifications.index') }}"><i class="bi bi-bell me-2"></i>Notifikasi</a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li>
                                 <form method="POST" action="{{ route('logout') }}">@csrf
@@ -126,6 +172,7 @@
             document.getElementById('sidebar').classList.toggle('collapsed');
         });
     </script>
+    @include('partials.theme_script')
     @stack('scripts')
 </body>
 </html>

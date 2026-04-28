@@ -24,6 +24,17 @@ class DemoTenantSeeder extends Seeder
             return;
         }
 
+        // Platform-level super admin (no tenant attached)
+        if (! User::where('email', 'super@rtrw.test')->exists()) {
+            User::create([
+                'name' => 'Super Admin',
+                'email' => 'super@rtrw.test',
+                'password' => Hash::make('password'),
+                'role' => User::ROLE_SUPERADMIN,
+                'email_verified_at' => now(),
+            ]);
+        }
+
         $trialPlan = Plan::where('code', Plan::CODE_TRIAL)->first();
 
         $tenant = Tenant::create([
@@ -45,17 +56,39 @@ class DemoTenantSeeder extends Seeder
             'email' => 'demo@rtrw.test',
             'phone' => '081234567890',
             'password' => Hash::make('password'),
-            'role' => 'owner',
+            'role' => User::ROLE_ADMIN,
             'email_verified_at' => now(),
         ]);
 
         $tenant->update(['owner_user_id' => $owner->id]);
+
+        // Staff users for the demo tenant
+        User::create([
+            'tenant_id' => $tenant->id,
+            'name' => 'Demo Teknisi',
+            'email' => 'teknisi@rtrw.test',
+            'phone' => '081234567891',
+            'password' => Hash::make('password'),
+            'role' => User::ROLE_TEKNISI,
+            'email_verified_at' => now(),
+        ]);
+        User::create([
+            'tenant_id' => $tenant->id,
+            'name' => 'Demo Kolektor',
+            'email' => 'kolektor@rtrw.test',
+            'phone' => '081234567892',
+            'password' => Hash::make('password'),
+            'role' => User::ROLE_KOLEKTOR,
+            'email_verified_at' => now(),
+        ]);
 
         $packages = collect([
             ['name' => 'Paket 5 Mbps', 'price_idr' => 100000, 'speed_mbps' => 5, 'mikrotik_profile' => '5M'],
             ['name' => 'Paket 10 Mbps', 'price_idr' => 150000, 'speed_mbps' => 10, 'mikrotik_profile' => '10M'],
             ['name' => 'Paket 20 Mbps', 'price_idr' => 250000, 'speed_mbps' => 20, 'mikrotik_profile' => '20M'],
         ])->map(fn ($p) => Package::create(array_merge($p, ['tenant_id' => $tenant->id, 'is_active' => true])));
+
+        $firstCustomer = null;
 
         for ($i = 1; $i <= 8; $i++) {
             $pkg = $packages->random();
@@ -72,6 +105,7 @@ class DemoTenantSeeder extends Seeder
                 'due_day' => 5,
                 'installed_at' => now()->subDays(rand(10, 60)),
             ]);
+            $firstCustomer ??= $cust;
 
             // Create one paid invoice last month, one unpaid this month
             $period = CarbonImmutable::now()->subMonth()->startOfMonth();
@@ -100,6 +134,20 @@ class DemoTenantSeeder extends Seeder
                 'due_date' => $period2->day(5)->toDateString(),
                 'amount_idr' => $pkg->price_idr,
                 'status' => $i % 3 === 0 ? Invoice::STATUS_OVERDUE : Invoice::STATUS_UNPAID,
+            ]);
+        }
+
+        // Customer-portal user linked to the first customer record
+        if ($firstCustomer) {
+            User::create([
+                'tenant_id' => $tenant->id,
+                'customer_id' => $firstCustomer->id,
+                'name' => $firstCustomer->name,
+                'email' => 'pelanggan@rtrw.test',
+                'phone' => $firstCustomer->phone,
+                'password' => Hash::make('password'),
+                'role' => User::ROLE_CUSTOMER,
+                'email_verified_at' => now(),
             ]);
         }
     }

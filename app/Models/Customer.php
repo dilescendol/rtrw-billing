@@ -21,6 +21,7 @@ class Customer extends Model
     protected $fillable = [
         'tenant_id',
         'package_id',
+        'nas_device_id',
         'code',
         'name',
         'phone',
@@ -29,6 +30,9 @@ class Customer extends Model
         'status',
         'pppoe_username',
         'pppoe_password',
+        'ip_address',
+        'radius_group',
+        'last_seen_mac',
         'due_day',
         'installed_at',
         'notes',
@@ -46,5 +50,10 @@ class Customer extends Model
     public function invoices(): HasMany
     {
         return $this->hasMany(Invoice::class);
+    }
+
+    public function nasDevice(): BelongsTo
+    {
+        return $this->belongsTo(NasDevice::class);
     }
 }

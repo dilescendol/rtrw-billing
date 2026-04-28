@@ -1,5 +1,6 @@
+@php($theme = request()->cookie('theme', 'light'))
 <!doctype html>
-<html lang="id">
+<html lang="id" data-bs-theme="{{ $theme }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -19,8 +20,15 @@
             <div class="d-flex gap-3 align-items-center">
                 <a href="{{ route('home') }}#fitur" class="text-muted text-decoration-none d-none d-md-inline">Fitur</a>
                 <a href="{{ route('pricing') }}" class="text-muted text-decoration-none d-none d-md-inline">Harga</a>
+                @include('partials.theme_toggle')
                 @auth
-                    <a href="{{ route('dashboard') }}" class="btn btn-primary btn-sm">Dashboard</a>
+                    @if(auth()->user()->isCustomer())
+                        <a href="{{ route('portal.dashboard') }}" class="btn btn-primary btn-sm">Panel Pelanggan</a>
+                    @elseif(auth()->user()->isSuperAdmin())
+                        <a href="{{ route('superadmin.tenants.index') }}" class="btn btn-primary btn-sm">Super Admin</a>
+                    @else
+                        <a href="{{ route('dashboard') }}" class="btn btn-primary btn-sm">Dashboard</a>
+                    @endif
                 @else
                     <a href="{{ route('login') }}" class="text-muted text-decoration-none">Masuk</a>
                     <a href="{{ route('register') }}" class="btn btn-primary btn-sm">Daftar Gratis</a>
@@ -36,5 +44,6 @@
         </div>
     </footer>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    @include('partials.theme_script')
 </body>
 </html>

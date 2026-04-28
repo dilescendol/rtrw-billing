@@ -100,6 +100,21 @@ class Tenant extends Model
         return $this->hasMany(Payment::class);
     }
 
+    public function nasDevices(): HasMany
+    {
+        return $this->hasMany(NasDevice::class);
+    }
+
+    public function hotspotUsers(): HasMany
+    {
+        return $this->hasMany(HotspotUser::class);
+    }
+
+    public function vouchers(): HasMany
+    {
+        return $this->hasMany(Voucher::class);
+    }
+
     public function subscriptions(): HasMany
     {
         return $this->hasMany(TenantSubscription::class);

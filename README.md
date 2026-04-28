@@ -54,7 +54,13 @@ CI workflow yang harus dilewati: `.github/workflows/ci.yml` (Pint test + `php ar
 
 ## 3. Fitur Utama
 
-- **Public**: landing page, pricing, login, register, lupa password.
+- **Public**: landing page (12 fitur produk + roadmap), pricing, login, register, lupa password.
+- **Role / RBAC** (lihat konstanta di `App\Models\User`):
+  - `superadmin` — operator platform, lihat semua tenant + paket di `/superadmin`.
+  - `admin` / `owner` — admin tenant (pemilik bisnis RT/RW Net), akses penuh dashboard.
+  - `teknisi` — staf teknis: lihat dashboard, pelanggan, invoice; tidak bisa ubah Settings / Subscription.
+  - `kolektor` — staf penagihan: sama dengan teknisi, fokus ke invoice & payments.
+  - `customer` — pelanggan akhir, login ke `/portal`. Diproteksi middleware alias `customer.portal`.
 - **Owner Dashboard**:
   - Manajemen pelanggan (CRUD, status `aktif`/`diisolir`/`berhenti`, kredensial PPPoE).
   - Manajemen paket internet (harga, kecepatan, MikroTik profile name).
@@ -62,14 +68,26 @@ CI workflow yang harus dilewati: `.github/workflows/ci.yml` (Pint test + `php ar
   - PDF invoice via DomPDF.
   - Pembayaran via **Pakasir** (auto, webhook callback) atau **manual transfer** + upload bukti.
   - Statistik: total pelanggan, pendapatan bulanan, tunggakan.
+- **Customer Portal (`/portal`)**: pelanggan login mandiri, lihat tagihan, riwayat pembayaran, dan ubah profil/password.
+- **Super Admin Console (`/superadmin`)**: read-only listing tenant (statistik trial / active / suspended) dan paket subscription.
+- **NAS / Router catalog (`/nas`)**: 1 tenant bisa punya banyak router MikroTik. CRUD + tes koneksi, password disimpan terenkripsi. Dibatasi `Plan.max_nas`.
+- **Hotspot users (`/hotspot`)**: CRUD user hotspot (mac, profile, expired). Saat NAS di-set dan status aktif, push otomatis ke `/ip/hotspot/user`. Dibatasi `Plan.allow_hotspot`.
+- **Voucher hotspot (`/vouchers`)**: generate batch (mass-create dengan kode unik 5–16 char), filter per status (`available`/`sold`/`used`/`expired`), halaman print friendly. Dibatasi `Plan.allow_voucher`.
+- **Notifikasi in-app**: bell di navbar (per-user), basis tabel `notifications` Laravel + `App\Notifications\GenericNotification`. Mark-as-read individual atau semua.
+- **Mode terang / gelap**: toggle di navbar, persist via cookie `theme=light|dark`. Memakai atribut `data-bs-theme` Bootstrap 5.3 + override custom di `public/css/adminkit.css`.
 - **Multi-tenant**: data pelanggan/invoice/pembayaran terisolasi otomatis lewat global scope `App\Scopes\TenantScope`. Setiap query model ber-tenant otomatis di-filter `tenant_id = auth()->user()->tenant_id`.
 - **Trial 3 hari → SUSPEND**: setelah trial habis, akun otomatis di-`suspend` (bukan auto-charge). Owner harus upgrade manual via halaman `subscription.plans`.
 - **Pakasir 2 scope**:
   - **Platform-level** (`PAKASIR_PLATFORM_*` di `.env`) — untuk subscription owner ke platform kami.
   - **Per-tenant** (di Settings, dienkripsi di DB pakai cast `encrypted`) — untuk billing pelanggan langsung ke rekening Pakasir owner. **Tidak** masuk laporan keuangan platform.
 - **MikroTik PPPoE**: auto-create PPP secret saat customer dibuat, auto-isolir saat status diubah ke `diisolir`/`berhenti`.
+- **RADIUS / FreeRADIUS (`/radius`)**: 1 tenant bisa punya banyak server. Konfigur host + secret + SQL backend (rlm_sql); customer otomatis di-push ke `radcheck`/`radreply`/`radusergroup`/`radgroupreply` saat create/update; dihapus saat customer dihapus. Dibatasi `Plan.allow_radius`.
+- **GenieACS / TR-069 (`/genieacs`)**: konfigur NBI URL + Basic Auth, list devices, halaman detail, tombol refresh & reboot. Dibatasi `Plan.allow_genieacs`.
 - **Notifikasi WhatsApp** via Fonnte (per-tenant token).
 - **Anti-abuse register**: cooldown email 30 hari + rate-limit IP (3/hari) + device fingerprint (2/hari) — lihat `App\Services\AntiAbuse`.
+
+> Roadmap (akan menyusul di PR berikutnya): monitoring on/off perangkat realtime,
+> remote IP customer, WhatsApp auto-billing reminder, dan chat realtime.
 
 ---
 
@@ -176,11 +194,17 @@ Buka <http://127.0.0.1:8000>.
 
 ### 4.6 Akun demo
 
-Seeder `Database\Seeders\DemoTenantSeeder` membuat:
+Seeder `Database\Seeders\DemoTenantSeeder` membuat 1 super admin platform, 1 tenant demo lengkap dengan owner / teknisi / kolektor / customer-portal user, 3 paket internet, 8 pelanggan, dan dua bulan invoice contoh.
 
-- Tenant demo + 1 owner: **`demo@rtrw.test` / `password`**
-- 3 paket internet contoh
-- Beberapa pelanggan + invoice contoh
+Semua password: `password`.
+
+| Email | Role | Login redirect |
+| --- | --- | --- |
+| `super@rtrw.test` | `superadmin` | `/superadmin/tenants` |
+| `demo@rtrw.test` | `admin` (owner tenant demo) | `/dashboard` |
+| `teknisi@rtrw.test` | `teknisi` | `/dashboard` (tanpa menu Settings / Subscription) |
+| `kolektor@rtrw.test` | `kolektor` | `/dashboard` (tanpa menu Settings / Subscription) |
+| `pelanggan@rtrw.test` | `customer` (terhubung ke Pelanggan 1) | `/portal` |
 
 ---
 
