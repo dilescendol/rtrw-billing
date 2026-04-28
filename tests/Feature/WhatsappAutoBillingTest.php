@@ -181,6 +181,39 @@ class WhatsappAutoBillingTest extends TestCase
         $this->assertSame(WhatsappTemplate::EVENT_INVOICE_OVERDUE, $log->event);
     }
 
+    public function test_deactivated_template_suppresses_notification(): void
+    {
+        Http::fake();
+        $tenant = $this->makeTenantOnPlan(Plan::CODE_PRO);
+        $customer = $this->makeCustomer($tenant);
+        $invoice = $this->makeInvoice($tenant, $customer, now()->addDays(3));
+        WhatsappTemplate::create([
+            'tenant_id' => $tenant->id,
+            'event' => WhatsappTemplate::EVENT_INVOICE_DUE_SOON,
+            'message' => 'should not be sent',
+            'is_active' => false,
+        ]);
+
+        $ok = (new WhatsappNotifier($tenant))->send(
+            WhatsappTemplate::EVENT_INVOICE_DUE_SOON, $customer, [], $invoice
+        );
+        $this->assertFalse($ok);
+        Http::assertNothingSent();
+        $this->assertSame(0, WhatsappLog::count());
+    }
+
+    public function test_invoice_remind_command_skips_invoice_already_reminded_today(): void
+    {
+        Http::fake(['api.fonnte.com/*' => Http::response(['ok' => true], 200)]);
+        $tenant = $this->makeTenantOnPlan(Plan::CODE_PRO);
+        $customer = $this->makeCustomer($tenant);
+        $invoice = $this->makeInvoice($tenant, $customer, now()->addDays(3)->startOfDay());
+        $invoice->forceFill(['reminder_count' => 1, 'last_reminder_at' => now()])->save();
+
+        $this->artisan(InvoiceReminderCommand::class)->assertSuccessful();
+        Http::assertNothingSent();
+    }
+
     public function test_invoice_remind_command_skips_non_reminder_days(): void
     {
         Http::fake();

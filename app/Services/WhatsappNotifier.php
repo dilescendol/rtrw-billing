@@ -86,10 +86,15 @@ class WhatsappNotifier
     {
         $template = WhatsappTemplate::where('tenant_id', $this->tenant->id)
             ->where('event', $event)
-            ->where('is_active', true)
             ->first();
 
-        $body = $template?->message ?? (WhatsappTemplate::DEFAULTS[$event] ?? null);
+        // If a template row exists but is deactivated, suppress the notification.
+        // Only fall back to DEFAULTS when the tenant has no row at all.
+        if ($template) {
+            $body = $template->is_active ? $template->message : null;
+        } else {
+            $body = WhatsappTemplate::DEFAULTS[$event] ?? null;
+        }
         if (! $body) {
             return null;
         }

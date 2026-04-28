@@ -35,6 +35,8 @@ class Invoice extends Model
         'pakasir_order_id',
         'pakasir_payment_url',
         'notes',
+        'reminder_count',
+        'last_reminder_at',
     ];
 
     protected $casts = [
@@ -42,6 +44,7 @@ class Invoice extends Model
         'period_end' => 'date',
         'due_date' => 'date',
         'paid_at' => 'datetime',
+        'last_reminder_at' => 'datetime',
     ];
 
     public function customer(): BelongsTo

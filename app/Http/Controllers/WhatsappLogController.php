@@ -17,7 +17,6 @@ class WhatsappLogController extends Controller
             ->when($status === 'success', fn ($q) => $q->where('success', true))
             ->when($status === 'failed', fn ($q) => $q->where('success', false))
             ->latest()
-            ->limit(1000)
             ->paginate(50)
             ->withQueryString();
 
